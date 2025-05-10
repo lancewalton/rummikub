@@ -36,6 +36,8 @@ case class Bag private (pieces: Map[Piece, Int]) {
 
   def isEmpty: Boolean = pieces.isEmpty
 
+  def nonEmpty: Boolean = pieces.nonEmpty
+
   def hasGroup(group: Group): Boolean = group.pieces.forall(pieces.contains)
 
   def -(group: Group): Bag = group.pieces.foldLeft(this) { case (acc, piece) => acc - piece }

@@ -14,6 +14,8 @@ case class Board(groups: List[Group]) {
   def -(group: Group): Board = Board(removeFirstMatch(group, groups))
 
   def contains(group: Group): Boolean = groups.contains(group)
+
+  def isEmpty: Boolean = groups.isEmpty
 }
 
 object Board {
