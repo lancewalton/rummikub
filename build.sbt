@@ -5,6 +5,6 @@ organization := "functionalcore"
 version := "1.0"
 
 libraryDependencies ++= Seq(
-  "org.typelevel"   %% "cats-core"      % "2.8.0",
-  "org.typelevel"   %% "cats-effect"    % "3.3.14"
+  "org.typelevel"   %% "cats-core"      % "2.13.0",
+  "org.typelevel"   %% "cats-effect"    % "3.6.1"
 )
