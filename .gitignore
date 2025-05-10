@@ -1,0 +1,12 @@
+# sbt
+/project/project
+target
+
+.idea
+
+# Mac
+.DS_Store
+
+/.bloop/
+/.bsp/
+/project/.bloop/
