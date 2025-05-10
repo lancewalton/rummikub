@@ -1,6 +1,6 @@
-package rumikub.ai
+package rummikub.ai
 
-import rumikub.model.*
+import rummikub.model.*
 
 object ValidGroupFinder {
   def apply(boardAndPlayer: BoardAndPlayer): Set[Group] = {

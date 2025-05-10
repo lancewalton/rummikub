@@ -1,8 +1,8 @@
-package rumikub.ai
+package rummikub.ai
 
 import cats.data.NonEmptyList
 import cats.syntax.all.*
-import rumikub.model.*
+import rummikub.model.*
 
 import scala.annotation.tailrec
 
@@ -37,6 +37,7 @@ object SequenceGroups {
       case (2, n) =>
         createGroupsWithSeed(NonEmptyList.of(first, Piece.Joker), remainingNonJokers, 1, n) ++
           createGroupsWithSeed(NonEmptyList.of(first, Piece.Joker, Piece.Joker), remainingNonJokers, 0, n)
+      case _ => throw new IllegalStateException(s"Unexpected number of jokers: $jokers")
     }
 
     withPrecedingJokers ++

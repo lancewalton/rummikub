@@ -1,6 +1,6 @@
-package rumikub.ai
+package rummikub.ai
 
-import rumikub.model.*
+import rummikub.model.*
 
 case class BoardAndPlayer(board: Board, player: Bag) {
   def transferAllToPlayer: BoardAndPlayer = BoardAndPlayer(Board.empty, player ++ board.pieces)

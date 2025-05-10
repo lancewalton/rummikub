@@ -1,6 +1,6 @@
-package rumikub.ai
+package rummikub.ai
 
-import rumikub.model.*
+import rummikub.model.*
 
 import scala.annotation.tailrec
 

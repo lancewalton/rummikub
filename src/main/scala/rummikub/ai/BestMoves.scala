@@ -1,4 +1,4 @@
-package rumikub.ai
+package rummikub.ai
 
 import cats.data.NonEmptyList
 

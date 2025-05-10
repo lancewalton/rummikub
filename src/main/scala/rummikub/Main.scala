@@ -1,8 +1,8 @@
-package rumikub
+package rummikub
 
 import java.util.UUID
-import rumikub.ai.AI
-import rumikub.model.*
+import rummikub.ai.AI
+import rummikub.model.*
 
 import scala.annotation.tailrec
 

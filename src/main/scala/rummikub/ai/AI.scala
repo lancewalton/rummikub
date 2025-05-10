@@ -1,7 +1,7 @@
-package rumikub.ai
+package rummikub.ai
 
 import cats.syntax.all.*
-import rumikub.model.*
+import rummikub.model.*
 
 import scala.annotation.tailrec
 import scala.util.Random

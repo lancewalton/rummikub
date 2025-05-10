@@ -1,4 +1,4 @@
-package rumikub.model
+package rummikub.model
 
 import cats.syntax.all.*
 

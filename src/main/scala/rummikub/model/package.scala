@@ -1,4 +1,4 @@
-package rumikub
+package rummikub
 
 import scala.annotation.tailrec
 

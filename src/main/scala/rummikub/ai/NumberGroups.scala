@@ -1,8 +1,8 @@
-package rumikub.ai
+package rummikub.ai
 
 import cats.data.NonEmptyList
 import cats.syntax.all.*
-import rumikub.model.*
+import rummikub.model.*
 
 import scala.annotation.tailrec
 
