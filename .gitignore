@@ -10,3 +10,4 @@ target
 /.bloop/
 /.bsp/
 /project/.bloop/
+/.java-version
