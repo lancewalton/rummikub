@@ -6,5 +6,5 @@ version := "1.0"
 
 libraryDependencies ++= Seq(
   "org.typelevel"   %% "cats-core"      % "2.13.0",
-  "org.typelevel"   %% "cats-effect"    % "3.6.1"
+   "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
 )
