@@ -10,6 +10,7 @@ case class Board(groups: List[Group]) {
     }
   )
 
+  def ++(that: Board): Board = Board(groups ::: that.groups)
   def +(group: Group): Board = Board(group :: groups)
   def -(group: Group): Board = Board(removeFirstMatch(group, groups))
 
