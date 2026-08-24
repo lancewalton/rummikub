@@ -14,6 +14,7 @@ describe('Lobby', () => {
     cy.contains('button', 'Start game').click()
     cy.get('h2').should('contain', 'Game')
     cy.get('.rack .tile').should('have.length', 14)
+    cy.get('.rack .tile').first().should('have.css', 'background-color').and('not.equal', 'rgba(0, 0, 0, 0)')
     cy.contains('button', 'Commit move').should('be.disabled')
   })
 

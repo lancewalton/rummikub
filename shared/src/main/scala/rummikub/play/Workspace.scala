@@ -33,6 +33,35 @@ final case class Workspace(rows: List[Row], nextRowId: Int):
     val newRows             = freshBoard ++ rackRows ++ returnedRows
     Workspace(newRows, newRows.map(_.id).maxOption.getOrElse(-1) + 1)
 
+  // Adopt a new server state (fresh board, authoritative rack) while keeping the
+  // player's rack arrangement: tiles still in hand stay where they are, committed
+  // tiles drop out, and newly drawn tiles arrive in a new row.
+  def syncTo(serverGroups: List[List[TileView]], serverRack: List[TileView]): Workspace =
+    val (freshBoard, nextRowId) = Workspace.numberRows(serverGroups, Zone.Board, maxRowId + 1, maxTileId + 1)
+    val (keptRackRows, drawn)   = reconcileRack(serverRack)
+    val drawnRow                = drawnRowOf(drawn, nextRowId, maxTileId + 1 + serverGroups.map(_.size).sum)
+    val newRows                 = freshBoard ++ keptRackRows ++ drawnRow
+    Workspace(newRows, newRows.map(_.id).maxOption.getOrElse(-1) + 1)
+
+  private def reconcileRack(serverRack: List[TileView]): (List[Row], List[TileView]) =
+    val available = serverRack.groupBy(identity).view.mapValues(_.size).toMap
+    val (keptRows, remaining) =
+      rackRows.foldLeft((List.empty[Row], available)) { case ((acc, avail), row) =>
+        val (kept, nextAvail) = keepAvailableTiles(row.tiles, avail)
+        (acc :+ row.copy(tiles = kept), nextAvail)
+      }
+    (keptRows.filter(_.tiles.nonEmpty), remaining.toList.flatMap((view, count) => List.fill(count)(view)))
+
+  private def keepAvailableTiles(tiles: List[Tile], available: Map[TileView, Int]): (List[Tile], Map[TileView, Int]) =
+    tiles.foldLeft((List.empty[Tile], available)) { case ((kept, avail), tile) =>
+      if avail.getOrElse(tile.view, 0) > 0 then (kept :+ tile, avail.updated(tile.view, avail(tile.view) - 1))
+      else (kept, avail)
+    }
+
+  private def drawnRowOf(drawn: List[TileView], rowId: Int, startTileId: Int): List[Row] =
+    if drawn.isEmpty then Nil
+    else List(Row(rowId, Zone.Rack, drawn.zipWithIndex.map((view, i) => Tile(startTileId + i, view))))
+
   private def maxRowId: Int  = rows.map(_.id).maxOption.getOrElse(-1)
   private def maxTileId: Int = rows.flatMap(_.tiles).map(_.id).maxOption.getOrElse(-1)
 

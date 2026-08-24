@@ -13,6 +13,8 @@ object Main:
   def main(args: Array[String]): Unit =
     renderOnDomContentLoaded(dom.document.getElementById("app"), App().node)
 
+private final case class TileFace(label: String, background: String, text: String)
+
 final class App:
   private val incoming  = new EventBus[ServerMessage]
   private val name      = Var("")
@@ -30,11 +32,17 @@ final class App:
   private val active: Signal[Boolean] = yourTurn.combineWith(connected.signal).map((turn, ok) => turn && ok)
   private val commitDisabled: Signal[Boolean] =
     active.combineWith(workspace.signal.map(_.canCommit)).map((canAct, committable) => !(canAct && committable))
+  // You may only draw before touching the board — otherwise commit or reset first.
+  private val boardPristine: Signal[Boolean] =
+    workspace.signal.combineWith(game).map((ws, view) => view.forall(v => ws.boardGroups == v.board.groups.map(_.tiles)))
+  private val drawDisabled: Signal[Boolean] =
+    active.combineWith(boardPristine).map((canAct, pristine) => !(canAct && pristine))
 
   def node: HtmlElement =
     div(
       onMountCallback(_ => connect()),
-      game.changes.collect { case Some(view) => workspaceOf(view) } --> workspace,
+      game.changes.collect { case Some(view) => view }.withCurrentValueOf(workspace.signal)
+        .map((view, ws) => ws.syncTo(view.board.groups.map(_.tiles), view.yourTiles)) --> workspace,
       child.maybe <-- connected.signal.map(ok => Option.unless(ok)(p(color := "crimson", fontWeight := "bold", "Connection lost — reload the page to reconnect."))),
       joiningSection,
       lobbySection,
@@ -118,7 +126,7 @@ final class App:
         onClick.compose(_.withCurrentValueOf(workspace.signal)) --> Observer[(dom.MouseEvent, Workspace)] {
           case (_, ws) => send(ClientMessage.SubmitMove(ws.boardGroups))
         }),
-      button(tpe := "button", "Draw a tile", disabled <-- active.map(!_), onClick --> Observer[Any](_ => send(ClientMessage.Draw))),
+      button(tpe := "button", "Draw a tile", disabled <-- drawDisabled, onClick --> Observer[Any](_ => send(ClientMessage.Draw))),
       child.maybe <-- state.map(_.notice.map(reason => p(color := "crimson", reason))),
       child.maybe <-- state.map(_.outcome.map(outcomeBanner)),
       child.maybe <-- state.map(_.outcome.map(_ => playAgainButton))
@@ -178,24 +186,34 @@ final class App:
     )
 
   private def tileEl(tile: Tile, editable: Boolean): HtmlElement =
-    val (label, colour) = tile.view match
-      case TileView.JokerTile        => ("J", "grey")
-      case TileView.NumberTile(c, n) => (n.toString, cssColour(c))
+    val face = tileFace(tile.view)
     span(
       cls := "tile",
-      label,
+      face.label,
       draggable := editable,
       onDragStart.mapTo(Some(tile.id)) --> dragging,
       display := "inline-block",
       minWidth := "1.5rem",
+      fontWeight := "bold",
       textAlign := "center",
       margin := "0.1rem",
-      padding := "0.2rem 0.35rem",
-      border := "1px solid #333",
+      padding := "0.25rem 0.4rem",
+      border := "1px solid #00000033",
       borderRadius := "0.25rem",
       cursor := (if editable then "grab" else "default"),
-      color := colour
+      backgroundColor := face.background,
+      color := face.text
     )
+
+  private def tileFace(view: TileView): TileFace = view match
+    case TileView.JokerTile             => TileFace("J", "#6a1b9a", "white")
+    case TileView.NumberTile(colour, n) => numberTileFace(colour, n)
+
+  private def numberTileFace(colour: Colour, n: Int): TileFace = colour match
+    case Colour.Black  => TileFace(n.toString, "#212121", "white")
+    case Colour.Blue   => TileFace(n.toString, "#1565c0", "white")
+    case Colour.Red    => TileFace(n.toString, "#c62828", "white")
+    case Colour.Yellow => TileFace(n.toString, "#f9a825", "black")
 
   private def dropTarget(target: DropTarget, editable: Boolean, stop: Boolean = false): Seq[Modifier[HtmlElement]] =
     if !editable then Seq.empty
@@ -231,15 +249,6 @@ final class App:
 
   private def outcomeBanner(winner: Option[PlayerView]): HtmlElement =
     p(fontWeight := "bold", winner.fold("Game over — a draw.")(w => s"Game over — ${w.name} wins!"))
-
-  private def workspaceOf(view: GameStateView): Workspace =
-    Workspace.fromBoardAndRack(view.board.groups.map(_.tiles), view.yourTiles)
-
-  private def cssColour(colour: Colour): String = colour match
-    case Colour.Black  => "black"
-    case Colour.Blue   => "blue"
-    case Colour.Red    => "red"
-    case Colour.Yellow => "goldenrod"
 
   private def section(shownIn: Phase)(content: Modifier[HtmlElement]*): HtmlElement =
     div(display <-- phase.map(p => if p == shownIn then "block" else "none"), content)

@@ -95,3 +95,33 @@ class WorkspaceSpec extends munit.FunSuite:
 
     assertEquals(reset.rackRows.map(_.tiles.map(_.view)), List(List(t(2)), List(t(1))))
   }
+
+  test("syncTo keeps the rack arrangement when the same tiles are still in hand") {
+    val ws0    = Workspace.fromBoardAndRack(Nil, List(t(1), t(2), t(3)))
+    val ws1    = ws0.move(idOf(ws0, t(1)), DropTarget.NewRow(Zone.Rack)) // rack: [2,3], [1]
+    val synced = ws1.syncTo(Nil, List(t(3), t(2), t(1)))
+
+    assertEquals(synced.rackRows.map(_.tiles.map(_.view)), List(List(t(2), t(3)), List(t(1))))
+  }
+
+  test("syncTo adds a newly drawn tile as a new rack row and keeps the rest in place") {
+    val ws0    = Workspace.fromBoardAndRack(Nil, List(t(1), t(2)))
+    val ws1    = ws0.move(idOf(ws0, t(1)), DropTarget.NewRow(Zone.Rack)) // rack: [2], [1]
+    val synced = ws1.syncTo(Nil, List(t(1), t(2), t(5)))
+
+    assertEquals(synced.rackRows.map(_.tiles.map(_.view)), List(List(t(2)), List(t(1)), List(t(5))))
+  }
+
+  test("syncTo drops committed tiles from their rack rows") {
+    val ws0    = Workspace.fromBoardAndRack(Nil, List(t(1), t(2), t(3)))
+    val synced = ws0.syncTo(Nil, List(t(1), t(3)))
+
+    assertEquals(synced.rackRows.map(_.tiles.map(_.view)), List(List(t(1), t(3))))
+  }
+
+  test("syncTo rebuilds the board from the server groups") {
+    val ws0    = Workspace.fromBoardAndRack(Nil, List(t(1)))
+    val synced = ws0.syncTo(List(List(t(3), t(4), t(5))), List(t(1)))
+
+    assertEquals(synced.boardRows.map(_.tiles.map(_.view)), List(List(t(3), t(4), t(5))))
+  }
