@@ -4,7 +4,7 @@ import com.raquo.laminar.api.L.*
 import io.circe.parser.decode
 import io.circe.syntax.*
 import org.scalajs.dom
-import rummikub.model.Colour
+import rummikub.model.{Colour, RoomCode}
 import rummikub.play.*
 import rummikub.protocol.*
 import rummikub.protocol.Codecs.given
@@ -16,6 +16,8 @@ object Main:
 final class App:
   private val incoming  = new EventBus[ServerMessage]
   private val name      = Var("")
+  private val code      = Var("")
+  private val connected = Var(true)
   private val workspace = Var(Workspace(Nil, 0))
   private val dragging  = Var(Option.empty[Int])
   private var socket: Option[dom.WebSocket] = None
@@ -24,13 +26,16 @@ final class App:
   private val phase: Signal[Phase]    = state.map(_.phase)
   private val game: Signal[Option[GameStateView]] = state.map(_.game)
   private val yourTurn: Signal[Boolean] = state.map(_.yourTurn)
+  // Actions require your turn AND a live connection, so nothing silently no-ops.
+  private val active: Signal[Boolean] = yourTurn.combineWith(connected.signal).map((turn, ok) => turn && ok)
   private val commitDisabled: Signal[Boolean] =
-    yourTurn.combineWith(workspace.signal.map(_.canCommit)).map((turn, committable) => !(turn && committable))
+    active.combineWith(workspace.signal.map(_.canCommit)).map((canAct, committable) => !(canAct && committable))
 
   def node: HtmlElement =
     div(
       onMountCallback(_ => connect()),
       game.changes.collect { case Some(view) => workspaceOf(view) } --> workspace,
+      child.maybe <-- connected.signal.map(ok => Option.unless(ok)(p(color := "crimson", fontWeight := "bold", "Connection lost — reload the page to reconnect."))),
       joiningSection,
       lobbySection,
       gameSection
@@ -39,19 +44,38 @@ final class App:
   private def joiningSection: HtmlElement =
     section(Phase.Joining)(
       h1("Rummikub"),
-      p("Enter your name to join the game."),
-      input(placeholder := "Your name", controlled(value <-- name, onInput.mapToValue --> name)),
-      button(
-        tpe := "button",
-        "Join",
-        onClick.compose(_.withCurrentValueOf(name.signal).map((_, n) => n).filter(_.nonEmpty))
-          --> Observer[String](n => send(ClientMessage.Join(n)))
-      )
+      p("Enter your name, then create a game or join one with its code."),
+      div(input(placeholder := "Your name", controlled(value <-- name, onInput.mapToValue --> name))),
+      div(
+        marginTop := "0.5rem",
+        button(
+          tpe := "button",
+          "Create game",
+          onClick.compose(_.withCurrentValueOf(name.signal).map((_, n) => n).filter(_.nonEmpty))
+            --> Observer[String](n => send(ClientMessage.CreateRoom(n)))
+        )
+      ),
+      div(
+        marginTop := "0.5rem",
+        input(placeholder := "Game code", controlled(value <-- code, onInput.mapToValue.map(_.toUpperCase) --> code)),
+        button(
+          tpe := "button",
+          "Join game",
+          onClick.compose(_.withCurrentValueOf(name.signal.combineWith(code.signal)).filter((_, n, c) => n.nonEmpty && c.nonEmpty))
+            --> Observer[(dom.MouseEvent, String, String)] { (_, n, c) => send(ClientMessage.JoinRoom(RoomCode(c), n)) }
+        )
+      ),
+      child.maybe <-- state.map(_.notice.map(reason => p(color := "crimson", reason)))
     )
 
   private def lobbySection: HtmlElement =
     section(Phase.Lobby)(
       h2("Lobby"),
+      p(
+        "Game code: ",
+        span(fontWeight := "bold", fontSize := "1.1rem", child.text <-- state.map(_.roomCode.map(_.value).getOrElse("…"))),
+        " — share it to invite players."
+      ),
       ul(
         children <-- state.map(_.lobby).split(_.id.value) { (_, _, playerSignal) =>
           li(child.text <-- playerSignal.map(p => if p.isAi then s"${p.name} (AI)" else p.name))
@@ -85,7 +109,7 @@ final class App:
   private def actions: HtmlElement =
     div(
       marginTop := "1rem",
-      button(tpe := "button", "Reset board", disabled <-- yourTurn.map(!_),
+      button(tpe := "button", "Reset board", disabled <-- active.map(!_),
         onClick.compose(_.withCurrentValueOf(game)) --> Observer[(dom.MouseEvent, Option[GameStateView])] {
           case (_, Some(view)) => workspace.update(_.resetBoard(view.board.groups.map(_.tiles)))
           case _               => ()
@@ -94,7 +118,7 @@ final class App:
         onClick.compose(_.withCurrentValueOf(workspace.signal)) --> Observer[(dom.MouseEvent, Workspace)] {
           case (_, ws) => send(ClientMessage.SubmitMove(ws.boardGroups))
         }),
-      button(tpe := "button", "Draw a tile", disabled <-- yourTurn.map(!_), onClick --> Observer[Any](_ => send(ClientMessage.Draw))),
+      button(tpe := "button", "Draw a tile", disabled <-- active.map(!_), onClick --> Observer[Any](_ => send(ClientMessage.Draw))),
       child.maybe <-- state.map(_.notice.map(reason => p(color := "crimson", reason))),
       child.maybe <-- state.map(_.outcome.map(outcomeBanner)),
       child.maybe <-- state.map(_.outcome.map(_ => playAgainButton))
@@ -229,4 +253,6 @@ final class App:
     val ws       = new dom.WebSocket(s"$scheme://${location.host}/ws")
     ws.onmessage = (event: dom.MessageEvent) =>
       decode[ServerMessage](event.data.toString).foreach(incoming.emit)
+    ws.onclose = _ => connected.set(false)
+    ws.onerror = _ => connected.set(false)
     socket = Some(ws)

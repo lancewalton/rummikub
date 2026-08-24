@@ -9,6 +9,8 @@ import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.websocket.WebSocketBuilder2
 import rummikub.server.GameServer
 
+import scala.concurrent.duration.*
+
 object ServerMain extends IOApp.Simple:
   private val jsPath = Path("frontend/target/scala-3.7.0/rummikub-frontend-fastopt/main.js")
 
@@ -28,6 +30,7 @@ object ServerMain extends IOApp.Simple:
         .default[IO]
         .withHost(host"0.0.0.0")
         .withPort(port"8080")
+        .withIdleTimeout(10.minutes)
         .withHttpWebSocketApp(wsb => routes(server, wsb).orNotFound)
         .build
         .useForever

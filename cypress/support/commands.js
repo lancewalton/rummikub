@@ -24,16 +24,16 @@ Cypress.Commands.add('recordIncoming', () => {
   })
 })
 
-Cypress.Commands.add('joinAs', (name) => {
+Cypress.Commands.add('createGame', (name) => {
   cy.get('input[placeholder="Your name"]').type(name)
-  cy.contains('button', 'Join').click()
+  cy.contains('button', 'Create game').click()
 })
 
-// Visit, join as a human, add one AI opponent and start the game.
+// Visit, create a game, add one AI opponent and start it.
 Cypress.Commands.add('startSoloGame', (name = 'Alice') => {
   cy.visit('/')
   cy.captureSocket()
-  cy.joinAs(name)
+  cy.createGame(name)
   cy.recordIncoming()
   cy.contains('button', 'Add AI player').click()
   cy.contains('button', 'Start game').click()

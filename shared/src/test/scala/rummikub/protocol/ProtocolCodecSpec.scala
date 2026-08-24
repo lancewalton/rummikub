@@ -2,12 +2,17 @@ package rummikub.protocol
 
 import io.circe.syntax.*
 import io.circe.parser.decode
-import rummikub.model.PlayerId
+import rummikub.model.{PlayerId, RoomCode}
 
 class ProtocolCodecSpec extends munit.FunSuite:
 
-  test("a ClientMessage round-trips through JSON") {
-    val message: ClientMessage = ClientMessage.Join("Alice")
+  test("a room-creation ClientMessage round-trips through JSON") {
+    val message: ClientMessage = ClientMessage.CreateRoom("Alice")
+    assertEquals(decode[ClientMessage](message.asJson.noSpaces), Right(message))
+  }
+
+  test("a room-join ClientMessage round-trips through JSON") {
+    val message: ClientMessage = ClientMessage.JoinRoom(RoomCode("WXYZ"), "Bob")
     assertEquals(decode[ClientMessage](message.asJson.noSpaces), Right(message))
   }
 

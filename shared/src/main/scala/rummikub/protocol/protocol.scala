@@ -1,11 +1,16 @@
 package rummikub.protocol
 
 import io.circe.{Codec, Decoder, Encoder}
-import rummikub.model.{Colour, PlayerId}
+import rummikub.model.{Colour, PlayerId, RoomCode}
 
 object Codecs:
   given Codec[PlayerId] = Codec.from(
     Decoder.decodeString.map(PlayerId(_)),
+    Encoder.encodeString.contramap(_.value)
+  )
+
+  given Codec[RoomCode] = Codec.from(
+    Decoder.decodeString.map(RoomCode(_)),
     Encoder.encodeString.contramap(_.value)
   )
 
@@ -40,7 +45,8 @@ final case class GameStateView(
 ) derives Codec.AsObject
 
 enum ClientMessage derives Codec.AsObject:
-  case Join(playerName: String)
+  case CreateRoom(playerName: String)
+  case JoinRoom(code: RoomCode, playerName: String)
   case AddAi(name: String)
   case Start
   case SubmitMove(groups: List[List[TileView]])
@@ -49,6 +55,8 @@ enum ClientMessage derives Codec.AsObject:
 
 enum ServerMessage derives Codec.AsObject:
   case Welcome(you: PlayerId)
+  case RoomJoined(code: RoomCode)
+  case RoomNotFound
   case LobbyUpdated(players: List[LobbyPlayer])
   case GameStarted
   case GameState(view: GameStateView)
