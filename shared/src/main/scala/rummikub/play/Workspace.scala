@@ -19,6 +19,10 @@ final case class Workspace(rows: List[Row], nextRowId: Int):
 
   def boardGroups: List[List[TileView]] = boardRows.map(_.tiles.map(_.view))
 
+  def canCommit: Boolean = boardRows.nonEmpty && boardRows.forall(rowIsValid)
+
+  def rowIsValid(row: Row): Boolean = Grouping.isValidGroup(row.tiles.map(_.view))
+
   def move(tileId: Int, target: DropTarget): Workspace =
     findTile(tileId).fold(this) { tile =>
       target match

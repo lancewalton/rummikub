@@ -24,6 +24,8 @@ final class App:
   private val phase: Signal[Phase]    = state.map(_.phase)
   private val game: Signal[Option[GameStateView]] = state.map(_.game)
   private val yourTurn: Signal[Boolean] = state.map(_.yourTurn)
+  private val commitDisabled: Signal[Boolean] =
+    yourTurn.combineWith(workspace.signal.map(_.canCommit)).map((turn, committable) => !(turn && committable))
 
   def node: HtmlElement =
     div(
@@ -65,21 +67,30 @@ final class App:
       div(cls := "players", children <-- game.map(renderPlayers)),
       p(fontWeight := "bold", child.text <-- game.map(turnStatus)),
       h3("Board"),
-      div(cls := "board", rowsContainer(workspace.signal.map(_.boardRows)), newRowZone(Zone.Board, "＋ new group")),
+      div(
+        cls := "board",
+        div(children <-- workspace.signal.map(_.boardRows).combineWith(yourTurn).map((rows, editable) => rows.map(rowEl(_, editable)))),
+        child <-- yourTurn.map(editable => newRowZone(Zone.Board, "＋ new group", editable))
+      ),
       h3("Your rack"),
       p(fontSize := "0.85rem", color := "#666", "Arrange your tiles here to spot groups — drag between rows and into the gaps. Move tiles up to the board to build your move."),
-      div(cls := "rack", rowsContainer(workspace.signal.map(_.rackRows)), newRowZone(Zone.Rack, "＋ new row")),
+      div(
+        cls := "rack",
+        div(children <-- workspace.signal.map(_.rackRows.map(rowEl(_, editable = true)))),
+        newRowZone(Zone.Rack, "＋ new row", editable = true)
+      ),
       actions
     )
 
   private def actions: HtmlElement =
     div(
       marginTop := "1rem",
-      button(tpe := "button", "Reset", onClick.compose(_.withCurrentValueOf(game)) --> Observer[(dom.MouseEvent, Option[GameStateView])] {
-        case (_, Some(view)) => workspace.set(workspaceOf(view))
-        case _               => ()
-      }),
-      button(tpe := "button", "Commit move", disabled <-- yourTurn.map(!_),
+      button(tpe := "button", "Reset", disabled <-- yourTurn.map(!_),
+        onClick.compose(_.withCurrentValueOf(game)) --> Observer[(dom.MouseEvent, Option[GameStateView])] {
+          case (_, Some(view)) => workspace.set(workspaceOf(view))
+          case _               => ()
+        }),
+      button(tpe := "button", "Commit move", disabled <-- commitDisabled,
         onClick.compose(_.withCurrentValueOf(workspace.signal)) --> Observer[(dom.MouseEvent, Workspace)] {
           case (_, ws) => send(ClientMessage.SubmitMove(ws.boardGroups))
         }),
@@ -92,34 +103,42 @@ final class App:
   private def playAgainButton: HtmlElement =
     button(tpe := "button", "Play again", onClick --> Observer[Any](_ => send(ClientMessage.PlayAgain)))
 
-  private def rowsContainer(rowsSignal: Signal[List[Row]]): HtmlElement =
-    div(children <-- rowsSignal.map(_.map(rowEl)))
-
-  private def rowEl(row: Row): HtmlElement =
+  private def rowEl(row: Row, editable: Boolean): HtmlElement =
+    val boardRow = row.zone == Zone.Board
+    val valid    = Grouping.isValidGroup(row.tiles.map(_.view))
     div(
       display := "flex",
       alignItems := "center",
       margin := "0.25rem 0",
       padding := "0.1rem",
-      border := "1px solid #ccc",
+      border := rowBorder(boardRow, valid),
       borderRadius := "0.25rem",
       minHeight := "1.9rem",
-      dropTarget(DropTarget.IntoRow(row.id, row.tiles.size)),
-      slot(row.id, 0) +: row.tiles.zipWithIndex.flatMap((tile, i) => Seq(tileEl(tile), slot(row.id, i + 1)))
+      dropTarget(DropTarget.IntoRow(row.id, row.tiles.size), editable),
+      slot(row.id, 0, editable) +: row.tiles.zipWithIndex.flatMap((tile, i) => Seq(tileEl(tile, editable), slot(row.id, i + 1, editable))),
+      if boardRow && !valid then invalidMarker else emptyNode
     )
 
-  private def slot(rowId: Int, index: Int): HtmlElement =
+  private def rowBorder(boardRow: Boolean, valid: Boolean): String =
+    if !boardRow then "1px solid #ccc"
+    else if valid then "1px solid #2e7d32"
+    else "2px solid crimson"
+
+  private def invalidMarker: HtmlElement =
+    span("✗ invalid", color := "crimson", fontSize := "0.8rem", marginLeft := "0.4rem")
+
+  private def slot(rowId: Int, index: Int, editable: Boolean): HtmlElement =
     div(
-      dropTarget(DropTarget.IntoRow(rowId, index), stop = true),
+      dropTarget(DropTarget.IntoRow(rowId, index), editable, stop = true),
       alignSelf := "stretch",
       width := "0.55rem",
       minHeight := "1.5rem",
       borderLeft := "1px dashed #ddd"
     )
 
-  private def newRowZone(zone: Zone, label: String): HtmlElement =
+  private def newRowZone(zone: Zone, label: String, editable: Boolean): HtmlElement =
     div(
-      dropTarget(DropTarget.NewRow(zone)),
+      dropTarget(DropTarget.NewRow(zone), editable),
       label,
       display := "flex",
       alignItems := "center",
@@ -131,13 +150,13 @@ final class App:
       color := "#888"
     )
 
-  private def tileEl(tile: Tile): HtmlElement =
+  private def tileEl(tile: Tile, editable: Boolean): HtmlElement =
     val (label, colour) = tile.view match
       case TileView.JokerTile        => ("J", "grey")
       case TileView.NumberTile(c, n) => (n.toString, cssColour(c))
     span(
       label,
-      draggable := true,
+      draggable := editable,
       onDragStart.mapTo(Some(tile.id)) --> dragging,
       display := "inline-block",
       minWidth := "1.5rem",
@@ -146,12 +165,13 @@ final class App:
       padding := "0.2rem 0.35rem",
       border := "1px solid #333",
       borderRadius := "0.25rem",
-      cursor := "grab",
+      cursor := (if editable then "grab" else "default"),
       color := colour
     )
 
-  private def dropTarget(target: DropTarget, stop: Boolean = false): Seq[Modifier[HtmlElement]] =
-    Seq(
+  private def dropTarget(target: DropTarget, editable: Boolean, stop: Boolean = false): Seq[Modifier[HtmlElement]] =
+    if !editable then Seq.empty
+    else Seq(
       onDragOver --> Observer[dom.DragEvent](_.preventDefault()),
       onDrop.preventDefault.compose(_.withCurrentValueOf(dragging.signal)) --> Observer[(dom.DragEvent, Option[Int])] {
         case (event, Some(id)) => handleDrop(event, id, target, stop)

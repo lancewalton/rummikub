@@ -60,3 +60,15 @@ class WorkspaceSpec extends munit.FunSuite:
     val ws = Workspace.fromBoardAndRack(List(List(t(3), t(4), t(5)), List(t(9), t(9), t(9))), List(t(1)))
     assertEquals(ws.boardGroups, List(List(t(3), t(4), t(5)), List(t(9), t(9), t(9))))
   }
+
+  test("canCommit is false when the board has no groups") {
+    assert(!Workspace.fromBoardAndRack(Nil, List(t(1), t(2))).canCommit)
+  }
+
+  test("canCommit is true when every board group is valid") {
+    assert(Workspace.fromBoardAndRack(List(List(t(3), t(4), t(5))), List(t(1))).canCommit)
+  }
+
+  test("canCommit is false when any board group is invalid") {
+    assert(!Workspace.fromBoardAndRack(List(List(t(3), t(4), t(5)), List(t(3), t(4))), List(t(1))).canCommit)
+  }

@@ -2,6 +2,7 @@ package rummikub.server
 
 import rummikub.model.*
 import rummikub.model.Piece.{Fixed, Joker}
+import rummikub.play.Grouping
 import rummikub.protocol.*
 
 object GameViews:
@@ -13,17 +14,7 @@ object GameViews:
     BoardView(board.groups.map(group))
 
   def parseMove(groups: List[List[TileView]]): Board =
-    Board(groups.flatMap(parseGroup))
-
-  private def parseGroup(tiles: List[TileView]): Option[Group] =
-    cats.data.NonEmptyList.fromList(tiles.map(toPiece)).map { pieces =>
-      val asRun = Group.Run(pieces)
-      if asRun.isValid then asRun else Group.Number(pieces)
-    }
-
-  private def toPiece(tile: TileView): Piece = tile match
-    case TileView.JokerTile          => Joker
-    case TileView.NumberTile(colour, number) => Fixed(colour, number)
+    Board(groups.flatMap(Grouping.interpret))
 
   def forPlayer(game: Game, playerId: PlayerId, aiIds: Set[PlayerId]): GameStateView =
     GameStateView(
