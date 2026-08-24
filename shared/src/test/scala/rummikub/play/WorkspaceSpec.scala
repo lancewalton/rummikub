@@ -72,3 +72,26 @@ class WorkspaceSpec extends munit.FunSuite:
   test("canCommit is false when any board group is invalid") {
     assert(!Workspace.fromBoardAndRack(List(List(t(3), t(4), t(5)), List(t(3), t(4))), List(t(1))).canCommit)
   }
+
+  private def idOf(ws: Workspace, view: TileView): Int =
+    ws.rows.flatMap(_.tiles).find(_.view == view).map(_.id).getOrElse(fail(s"no tile $view"))
+
+  test("resetBoard restores the board and returns played tiles to the rack, keeping rack rows") {
+    val ws0 = Workspace.fromBoardAndRack(List(List(t(3), t(4), t(5))), List(t(1), t(2), t(6)))
+    val ws1 = ws0.move(idOf(ws0, t(1)), DropTarget.NewRow(Zone.Rack)) // rack rows: [2,6], [1]
+    val ws2 = ws1.move(idOf(ws1, t(6)), DropTarget.IntoRow(ws1.boardRows.head.id, 3)) // board: [3,4,5,6]; rack: [2], [1]
+
+    val reset = ws2.resetBoard(List(List(t(3), t(4), t(5))))
+
+    assertEquals(reset.boardRows.map(_.tiles.map(_.view)), List(List(t(3), t(4), t(5))))
+    assertEquals(reset.rackRows.map(_.tiles.map(_.view)), List(List(t(2)), List(t(1)), List(t(6))))
+  }
+
+  test("resetBoard with no played tiles leaves the rack rows untouched") {
+    val ws0 = Workspace.fromBoardAndRack(List(List(t(3), t(4), t(5))), List(t(1), t(2)))
+    val ws1 = ws0.move(idOf(ws0, t(1)), DropTarget.NewRow(Zone.Rack)) // rack: [2], [1]
+
+    val reset = ws1.resetBoard(List(List(t(3), t(4), t(5))))
+
+    assertEquals(reset.rackRows.map(_.tiles.map(_.view)), List(List(t(2)), List(t(1))))
+  }

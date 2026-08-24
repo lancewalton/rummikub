@@ -23,6 +23,26 @@ final case class Workspace(rows: List[Row], nextRowId: Int):
 
   def rowIsValid(row: Row): Boolean = Grouping.isValidGroup(row.tiles.map(_.view))
 
+  // Restore the board to the committed server groups, returning any tiles the
+  // player had moved onto the board to a fresh rack row. Rack organisation is
+  // left untouched.
+  def resetBoard(serverGroups: List[List[TileView]]): Workspace =
+    val returned            = removeMatching(boardRows.flatMap(_.tiles), serverGroups.flatten)
+    val (freshBoard, nextR) = Workspace.numberRows(serverGroups, Zone.Board, maxRowId + 1, maxTileId + 1)
+    val returnedRows        = if returned.isEmpty then Nil else List(Row(nextR, Zone.Rack, returned))
+    val newRows             = freshBoard ++ rackRows ++ returnedRows
+    Workspace(newRows, newRows.map(_.id).maxOption.getOrElse(-1) + 1)
+
+  private def maxRowId: Int  = rows.map(_.id).maxOption.getOrElse(-1)
+  private def maxTileId: Int = rows.flatMap(_.tiles).map(_.id).maxOption.getOrElse(-1)
+
+  private def removeMatching(tiles: List[Tile], views: List[TileView]): List[Tile] =
+    views.foldLeft(tiles) { (remaining, view) =>
+      remaining.indexWhere(_.view == view) match
+        case -1 => remaining
+        case i  => remaining.patch(i, Nil, 1)
+    }
+
   def move(tileId: Int, target: DropTarget): Workspace =
     findTile(tileId).fold(this) { tile =>
       target match
@@ -65,3 +85,13 @@ object Workspace:
 
   private def numberTiles(views: List[TileView], startId: Int): (List[Tile], Int) =
     (views.zipWithIndex.map((view, i) => Tile(startId + i, view)), startId + views.size)
+
+  // Build rows for the given groups, assigning row ids from startRowId and tile
+  // ids from startTileId; returns the rows and the next free row id.
+  private def numberRows(groups: List[List[TileView]], zone: Zone, startRowId: Int, startTileId: Int): (List[Row], Int) =
+    val (rows, nextRowId, _) =
+      groups.foldLeft((List.empty[Row], startRowId, startTileId)) { case ((acc, rowId, tileId), views) =>
+        val (tiles, nextTileId) = numberTiles(views, tileId)
+        (acc :+ Row(rowId, zone, tiles), rowId + 1, nextTileId)
+      }
+    (rows, nextRowId)

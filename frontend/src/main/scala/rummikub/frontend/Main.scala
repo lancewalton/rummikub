@@ -85,9 +85,9 @@ final class App:
   private def actions: HtmlElement =
     div(
       marginTop := "1rem",
-      button(tpe := "button", "Reset", disabled <-- yourTurn.map(!_),
+      button(tpe := "button", "Reset board", disabled <-- yourTurn.map(!_),
         onClick.compose(_.withCurrentValueOf(game)) --> Observer[(dom.MouseEvent, Option[GameStateView])] {
-          case (_, Some(view)) => workspace.set(workspaceOf(view))
+          case (_, Some(view)) => workspace.update(_.resetBoard(view.board.groups.map(_.tiles)))
           case _               => ()
         }),
       button(tpe := "button", "Commit move", disabled <-- commitDisabled,
