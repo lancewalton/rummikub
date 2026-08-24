@@ -73,13 +73,13 @@ final class App:
         div(children <-- workspace.signal.map(_.rackRows.map(rowEl(_, editable = true)))),
         newRowZone(Zone.Rack, "＋ new row", editable = true)
       ),
+      actions,
       h3("Board"),
       div(
         cls := "board",
         div(children <-- workspace.signal.map(_.boardRows).combineWith(yourTurn).map((rows, editable) => rows.map(rowEl(_, editable)))),
         child <-- yourTurn.map(editable => newRowZone(Zone.Board, "＋ new group", editable))
-      ),
-      actions
+      )
     )
 
   private def actions: HtmlElement =
@@ -107,6 +107,7 @@ final class App:
     val boardRow = row.zone == Zone.Board
     val valid    = Grouping.isValidGroup(row.tiles.map(_.view))
     div(
+      cls := "row",
       display := "flex",
       alignItems := "center",
       margin := "0.25rem 0",
@@ -125,10 +126,11 @@ final class App:
     else "2px solid crimson"
 
   private def invalidMarker: HtmlElement =
-    span("✗ invalid", color := "crimson", fontSize := "0.8rem", marginLeft := "0.4rem")
+    span(cls := "invalid", "✗ invalid", color := "crimson", fontSize := "0.8rem", marginLeft := "0.4rem")
 
   private def slot(rowId: Int, index: Int, editable: Boolean): HtmlElement =
     div(
+      cls := "slot",
       dropTarget(DropTarget.IntoRow(rowId, index), editable, stop = true),
       alignSelf := "stretch",
       width := "0.55rem",
@@ -138,6 +140,7 @@ final class App:
 
   private def newRowZone(zone: Zone, label: String, editable: Boolean): HtmlElement =
     div(
+      cls := "new-zone",
       dropTarget(DropTarget.NewRow(zone), editable),
       label,
       display := "flex",
@@ -155,6 +158,7 @@ final class App:
       case TileView.JokerTile        => ("J", "grey")
       case TileView.NumberTile(c, n) => (n.toString, cssColour(c))
     span(
+      cls := "tile",
       label,
       draggable := editable,
       onDragStart.mapTo(Some(tile.id)) --> dragging,

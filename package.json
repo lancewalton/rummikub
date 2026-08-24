@@ -1,0 +1,13 @@
+{
+  "name": "rummikub-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cypress end-to-end tests for the Rummikub web GUI",
+  "scripts": {
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run"
+  },
+  "devDependencies": {
+    "cypress": "^13.17.0"
+  }
+}

@@ -11,3 +11,9 @@ target
 /.bsp/
 /project/.bloop/
 /.java-version
+
+# Node / Cypress
+/node_modules/
+/cypress/videos/
+/cypress/screenshots/
+/cypress/downloads/
