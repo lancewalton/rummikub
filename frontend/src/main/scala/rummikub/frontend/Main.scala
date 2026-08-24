@@ -66,18 +66,18 @@ final class App:
       h2("Game"),
       div(cls := "players", children <-- game.map(renderPlayers)),
       p(fontWeight := "bold", child.text <-- game.map(turnStatus)),
+      h3("Your rack"),
+      p(fontSize := "0.85rem", color := "#666", "Arrange your tiles here to spot groups — drag between rows and into the gaps. Move tiles down to the board to build your move."),
+      div(
+        cls := "rack",
+        div(children <-- workspace.signal.map(_.rackRows.map(rowEl(_, editable = true)))),
+        newRowZone(Zone.Rack, "＋ new row", editable = true)
+      ),
       h3("Board"),
       div(
         cls := "board",
         div(children <-- workspace.signal.map(_.boardRows).combineWith(yourTurn).map((rows, editable) => rows.map(rowEl(_, editable)))),
         child <-- yourTurn.map(editable => newRowZone(Zone.Board, "＋ new group", editable))
-      ),
-      h3("Your rack"),
-      p(fontSize := "0.85rem", color := "#666", "Arrange your tiles here to spot groups — drag between rows and into the gaps. Move tiles up to the board to build your move."),
-      div(
-        cls := "rack",
-        div(children <-- workspace.signal.map(_.rackRows.map(rowEl(_, editable = true)))),
-        newRowZone(Zone.Rack, "＋ new row", editable = true)
       ),
       actions
     )
