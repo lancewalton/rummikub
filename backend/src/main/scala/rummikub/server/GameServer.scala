@@ -47,6 +47,7 @@ final class GameServer(
     case ClientMessage.Start            => start
     case ClientMessage.SubmitMove(groups) => submitMove(myId, GameViews.parseMove(groups))
     case ClientMessage.Draw             => draw(myId)
+    case ClientMessage.PlayAgain        => playAgain
 
   private def start: IO[Unit] =
     turnMutex.lock.surround {
@@ -74,6 +75,16 @@ final class GameServer(
       onTurn(myId) { current =>
         val updated = current.noPlayAvailableForCurrentPlayer
         game.set(updated.some) *> broadcastState(updated) *> progress
+      }
+    }
+
+  private def playAgain: IO[Unit] =
+    turnMutex.lock.surround {
+      game.get.flatMap {
+        case Some(finished) if finished.isFinished =>
+          val restarted = Rematch(finished)
+          game.set(restarted.some) *> broadcast(ServerMessage.GameStarted) *> broadcastState(restarted) *> progress
+        case _ => IO.unit
       }
     }
 

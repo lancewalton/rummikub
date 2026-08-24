@@ -16,6 +16,11 @@ class ProtocolCodecSpec extends munit.FunSuite:
     assertEquals(decode[ClientMessage](message.asJson.noSpaces), Right(message))
   }
 
+  test("the play-again ClientMessage round-trips through JSON") {
+    val message: ClientMessage = ClientMessage.PlayAgain
+    assertEquals(decode[ClientMessage](message.asJson.noSpaces), Right(message))
+  }
+
   test("a ServerMessage carrying lobby players round-trips through JSON") {
     val message: ServerMessage =
       ServerMessage.LobbyUpdated(List(LobbyPlayer(PlayerId("p1"), "Alice", isAi = false)))

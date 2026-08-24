@@ -45,6 +45,7 @@ enum ClientMessage derives Codec.AsObject:
   case Start
   case SubmitMove(groups: List[List[TileView]])
   case Draw
+  case PlayAgain
 
 enum ServerMessage derives Codec.AsObject:
   case Welcome(you: PlayerId)

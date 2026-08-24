@@ -92,8 +92,12 @@ final class App:
         }),
       button(tpe := "button", "Draw a tile", disabled <-- yourTurn.map(!_), onClick --> Observer[Any](_ => send(ClientMessage.Draw))),
       child.maybe <-- state.map(_.notice.map(reason => p(color := "crimson", reason))),
-      child.maybe <-- state.map(_.outcome.map(outcomeBanner))
+      child.maybe <-- state.map(_.outcome.map(outcomeBanner)),
+      child.maybe <-- state.map(_.outcome.map(_ => playAgainButton))
     )
+
+  private def playAgainButton: HtmlElement =
+    button(tpe := "button", "Play again", onClick --> Observer[Any](_ => send(ClientMessage.PlayAgain)))
 
   private def groupZone(groupId: Int, tilesSignal: Signal[List[Tile]]): HtmlElement =
     div(
