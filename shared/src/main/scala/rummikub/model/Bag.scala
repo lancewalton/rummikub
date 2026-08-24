@@ -42,6 +42,10 @@ case class Bag private (pieces: Map[Piece, Int]) {
 
   def -(group: Group): Bag = group.pieces.foldLeft(this) { case (acc, piece) => acc - piece }
 
+  def --(that: Bag): Bag = that.piecesAsVector.foldLeft(this)(_ - _)
+
+  def contains(that: Bag): Boolean = that.pieces.forall { case (piece, n) => pieces.getOrElse(piece, 0) >= n }
+
   def -(piece: Piece): Bag =
     pieces
       .get(piece)

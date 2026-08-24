@@ -12,12 +12,25 @@ object GameViews:
   def board(board: Board): BoardView =
     BoardView(board.groups.map(group))
 
-  def forPlayer(game: Game, playerId: PlayerId): GameStateView =
+  def parseMove(groups: List[List[TileView]]): Board =
+    Board(groups.flatMap(parseGroup))
+
+  private def parseGroup(tiles: List[TileView]): Option[Group] =
+    cats.data.NonEmptyList.fromList(tiles.map(toPiece)).map { pieces =>
+      val asRun = Group.Run(pieces)
+      if asRun.isValid then asRun else Group.Number(pieces)
+    }
+
+  private def toPiece(tile: TileView): Piece = tile match
+    case TileView.JokerTile          => Joker
+    case TileView.NumberTile(colour, number) => Fixed(colour, number)
+
+  def forPlayer(game: Game, playerId: PlayerId, aiIds: Set[PlayerId]): GameStateView =
     GameStateView(
       you = playerId,
       yourTiles = tilesOf(game.players(playerId).rack),
       board = board(game.board),
-      players = game.playerSequence.map(id => playerView(game.players(id))),
+      players = game.playerSequence.map(id => playerView(game.players(id), aiIds)),
       currentPlayer = game.currentPlayerId
     )
 
@@ -28,7 +41,7 @@ object GameViews:
     case _: Group.Run    => GroupKind.Run
     case _: Group.Number => GroupKind.Set
 
-  private def playerView(player: Player): PlayerView =
-    PlayerView(player.id, player.name, isAi = false, tileCount = tilesOf(player.rack).size)
+  def playerView(player: Player, aiIds: Set[PlayerId]): PlayerView =
+    PlayerView(player.id, player.name, isAi = aiIds.contains(player.id), tileCount = tilesOf(player.rack).size)
 
   private def tilesOf(bag: Bag): List[TileView] = bag.piecesAsVector.toList.map(tile)

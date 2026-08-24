@@ -43,9 +43,13 @@ enum ClientMessage derives Codec.AsObject:
   case Join(playerName: String)
   case AddAi(name: String)
   case Start
+  case SubmitMove(groups: List[List[TileView]])
+  case Draw
 
 enum ServerMessage derives Codec.AsObject:
   case Welcome(you: PlayerId)
   case LobbyUpdated(players: List[LobbyPlayer])
   case GameStarted
   case GameState(view: GameStateView)
+  case MoveRejected(reason: String)
+  case GameOver(winner: Option[PlayerView])

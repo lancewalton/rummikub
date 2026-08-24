@@ -26,15 +26,30 @@ class GameViewsSpec extends munit.FunSuite:
     assertEquals(view.groups.head.tiles, List(TileView.NumberTile(Colour.Red, 3), TileView.NumberTile(Colour.Red, 4), TileView.NumberTile(Colour.Red, 5)))
   }
 
+  test("a submitted move infers run and set groups from the tiles") {
+    val groups = List(
+      List(TileView.NumberTile(Colour.Red, 3), TileView.NumberTile(Colour.Red, 4), TileView.NumberTile(Colour.Red, 5)),
+      List(TileView.NumberTile(Colour.Red, 7), TileView.JokerTile, TileView.NumberTile(Colour.Black, 7))
+    )
+
+    val board = GameViews.parseMove(groups)
+
+    assertEquals(board.groups, List(
+      Group.Run(NonEmptyList.of(red(3), red(4), red(5))),
+      Group.Number(NonEmptyList.of(red(7), Joker, Fixed(Colour.Black, 7)))
+    ))
+  }
+
   test("a per-player view exposes that player's rack, all players' counts and the current player") {
     val game = Game.initial(List((PlayerId("p1"), "Alice"), (PlayerId("p2"), "Bob")))
 
-    val view = GameViews.forPlayer(game, PlayerId("p1"))
+    val view = GameViews.forPlayer(game, PlayerId("p1"), Set(PlayerId("p2")))
 
     assertEquals(view.you, PlayerId("p1"))
     assertEquals(view.yourTiles.size, 14)
     assertEquals(view.players.map(_.id).toSet, Set(PlayerId("p1"), PlayerId("p2")))
     assert(view.players.forall(_.tileCount == 14))
+    assertEquals(view.players.filter(_.isAi).map(_.id), List(PlayerId("p2")))
     assertEquals(view.currentPlayer, game.currentPlayerId)
     assert(view.board.groups.isEmpty)
   }
