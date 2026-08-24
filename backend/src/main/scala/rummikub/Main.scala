@@ -7,7 +7,9 @@ import rummikub.model.*
 import scala.annotation.tailrec
 
 object Main extends App {
-  play(Game.initial(List((UUID.randomUUID(), "AI1"), (UUID.randomUUID, "AI2"))))
+  private def newId(): PlayerId = PlayerId(UUID.randomUUID().toString)
+
+  play(Game.initial(List((newId(), "AI1"), (newId(), "AI2"))))
 
   @tailrec
   private def play(game: Game): Unit = {

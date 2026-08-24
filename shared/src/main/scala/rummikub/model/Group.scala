@@ -1,7 +1,6 @@
 package rummikub.model
 
 import cats.data.NonEmptyList
-import java.util.UUID
 
 sealed trait Group {
   def pieces: NonEmptyList[Piece]

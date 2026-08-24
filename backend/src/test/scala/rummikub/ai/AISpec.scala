@@ -7,7 +7,7 @@ import rummikub.model.Piece.Fixed
 class AISpec extends munit.FunSuite:
 
   private def red(n: Int): Fixed = Fixed(Colour.Red, n)
-  private def player(rack: Bag, firstMove: Boolean): Player = Player(UUID.randomUUID(), "AI", rack, firstMove)
+  private def player(rack: Bag, firstMove: Boolean): Player = Player(PlayerId(UUID.randomUUID().toString), "AI", rack, firstMove)
 
   test("finds a valid first move and returns the full board plus the reduced rack") {
     val result = AI(Board.empty, player(Bag(red(11), red(12), red(13)), firstMove = true))
