@@ -7,30 +7,8 @@ import scala.util.Random
 case class Bag private (pieces: Map[Piece, Int]) {
   lazy val valueOnRack: Int = pieces.map { case (p, n) => p.valueOnRack * n }.sum
 
-  override def toString: String = {
-    implicit val ordering: Ordering[Piece] = (p1: Piece, p2: Piece) => (p1, p2) match {
-      case (Piece.Joker, Piece.Joker) => 0
-      case (Piece.Joker, _) => -1
-      case (_, Piece.Joker) => 1
-      case (f1: Piece.Fixed, f2: Piece.Fixed) =>
-        if (f1.number < f2.number) -1
-        else if (f1.number > f2.number) 1
-        else (f1.colour, f2.colour) match {
-          case (Colour.Red, Colour.Red) | (Colour.Blue, Colour.Blue) | (Colour.Black, Colour.Black) | (Colour.Yellow, Colour.Yellow) => 0
-          case (_, Colour.Red) => 1
-          case (Colour.Red, _) => -1
-          case (Colour.Blue, _) => -1
-          case (_, Colour.Blue) => 1
-          case (Colour.Black, _) => -1
-          case (_, Colour.Black) => 1
-        }
-    }
-
-    pieces.toList.sortBy(_._1).map { case (p, n) =>
-      if (n == 1) p
-      else s"$p x $n"
-    }.mkString(", ")
-  }
+  override def toString: String =
+    pieces.toList.sortBy(_._1)(Bag.pieceOrdering).map(Bag.renderEntry).mkString(", ")
 
   def hasPiece(piece: Piece): Boolean = pieces.contains(piece)
 
@@ -69,16 +47,14 @@ case class Bag private (pieces: Map[Piece, Int]) {
     case p: Piece.Fixed => p
   }.toList
 
-  def takeRandomPiece: Option[(Piece, Bag)] = {
-    if (isEmpty) None
-    else {
-      val pav = piecesAsVector
-      val index = Random.nextInt(pav.size)
-      val piece = pav(index)
-      val bag = Bag(pav.take(index).toList ::: pav.drop(index + 1).toList)
-      Some((piece, bag))
+  def takeRandomPiece: Option[(Piece, Bag)] =
+    Option.when(nonEmpty) {
+      val index = Random.nextInt(piecesAsVector.size)
+      (piecesAsVector(index), removeAt(piecesAsVector, index))
     }
-  }
+
+  private def removeAt(pav: Vector[Piece], index: Int): Bag =
+    Bag(pav.take(index) ++ pav.drop(index + 1))
 
   def takeRandomUnsafe(n: Int): (Bag, Bag) =
     if (pieces.size <= n) (this, Bag.empty)
@@ -95,6 +71,23 @@ case class Bag private (pieces: Map[Piece, Int]) {
 
 object Bag {
   val empty: Bag = Bag(Nil)
+
+  private def colourRank(colour: Colour): Int = colour match {
+    case Colour.Red    => 0
+    case Colour.Blue   => 1
+    case Colour.Black  => 2
+    case Colour.Yellow => 3
+  }
+
+  private val pieceOrdering: Ordering[Piece] = Ordering.by[Piece, (Int, Int, Int)] {
+    case Piece.Joker                 => (0, 0, 0)
+    case Piece.Fixed(colour, number) => (1, number, colourRank(colour))
+  }
+
+  private def renderEntry(entry: (Piece, Int)): String = entry match {
+    case (piece, 1)     => piece.toString
+    case (piece, count) => s"$piece x $count"
+  }
 
   val initial: Bag = {
     val pieces =
