@@ -26,6 +26,7 @@ lazy val backend = project
   .dependsOn(shared.jvm)
   .settings(
     name := "rummikub-backend",
+    Compile / mainClass := Some("rummikub.ServerMain"),
     libraryDependencies ++= Seq(
       "com.google.ortools" % "ortools-java"          % "9.11.4210",
       "org.http4s"        %% "http4s-ember-server"   % http4sVersion,
